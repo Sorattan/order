@@ -1,0 +1,86 @@
+version: "3.9"
+
+services:
+  dispatcher:
+    build: ./dispatcher
+    container_name: dispatcher
+    ports:
+      - "8000:8000"
+    depends_on:
+      - auth-service
+      - product-service
+      - order-service
+      - dispatcher-db
+    environment:
+      - APP_NAME=dispatcher
+      - AUTH_SERVICE_URL=http://auth-service:8001
+      - PRODUCT_SERVICE_URL=http://product-service:8002
+      - ORDER_SERVICE_URL=http://order-service:8003
+      - MONGO_URL=mongodb://dispatcher-db:27017
+      - DB_NAME=dispatcher_db
+    networks:
+      - backend
+
+  auth-service:
+    build: ./auth-service
+    container_name: auth-service
+    depends_on:
+      - auth-db
+    environment:
+      - APP_NAME=auth-service
+      - MONGO_URL=mongodb://auth-db:27017
+      - DB_NAME=auth_db
+    networks:
+      - backend
+
+  product-service:
+    build: ./product-service
+    container_name: product-service
+    depends_on:
+      - product-db
+    environment:
+      - APP_NAME=product-service
+      - MONGO_URL=mongodb://product-db:27017
+      - DB_NAME=product_db
+    networks:
+      - backend
+
+  order-service:
+    build: ./order-service
+    container_name: order-service
+    depends_on:
+      - order-db
+    environment:
+      - APP_NAME=order-service
+      - MONGO_URL=mongodb://order-db:27017
+      - DB_NAME=order_db
+    networks:
+      - backend
+
+  dispatcher-db:
+    image: mongo:7
+    container_name: dispatcher-db
+    networks:
+      - backend
+
+  auth-db:
+    image: mongo:7
+    container_name: auth-db
+    networks:
+      - backend
+
+  product-db:
+    image: mongo:7
+    container_name: product-db
+    networks:
+      - backend
+
+  order-db:
+    image: mongo:7
+    container_name: order-db
+    networks:
+      - backend
+
+networks:
+  backend:
+    driver: bridge
