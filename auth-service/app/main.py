@@ -22,5 +22,4 @@ def login(data: LoginRequest):
             "token_type": "bearer",
             "role": "admin"
         }
-
     raise HTTPException(status_code=401, detail="Invalid username or password")
