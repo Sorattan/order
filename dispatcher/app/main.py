@@ -7,6 +7,7 @@ from pydantic import BaseModel
 app = FastAPI()
 
 AUTH_SERVICE_URL = os.getenv("AUTH_SERVICE_URL", "http://127.0.0.1:8001")
+PRODUCT_SERVICE_URL = os.getenv("PRODUCT_SERVICE_URL", "http://127.0.0.1:8002")
 
 
 class LoginRequest(BaseModel):
@@ -17,13 +18,6 @@ class LoginRequest(BaseModel):
 @app.get("/health")
 def health():
     return {"status": "ok"}
-
-
-@app.get("/products")
-def get_products(authorization: str | None = Header(default=None)):
-    if authorization is None:
-        raise HTTPException(status_code=401, detail="Authorization header missing")
-    return {"message": "authorized request accepted"}
 
 
 @app.post("/auth/login")
@@ -41,3 +35,22 @@ def auth_login(data: LoginRequest):
         )
     except httpx.RequestError:
         raise HTTPException(status_code=503, detail="Auth service unavailable")
+
+
+@app.get("/products")
+def get_products(authorization: str | None = Header(default=None)):
+    if authorization is None:
+        raise HTTPException(status_code=401, detail="Authorization header missing")
+
+    try:
+        response = httpx.get(
+            f"{PRODUCT_SERVICE_URL}/products",
+            timeout=5.0
+        )
+
+        return JSONResponse(
+            status_code=response.status_code,
+            content=response.json()
+        )
+    except httpx.RequestError:
+        raise HTTPException(status_code=503, detail="Product service unavailable")
