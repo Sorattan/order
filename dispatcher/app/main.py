@@ -3,6 +3,7 @@ import httpx
 from fastapi import FastAPI, Header, HTTPException
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
+from typing import Annotated
 
 app = FastAPI()
 
@@ -38,7 +39,9 @@ def auth_login(data: LoginRequest):
 
 
 @app.get("/products")
-def get_products(authorization: str | None = Header(default=None)):
+def get_products(
+    authorization: Annotated[str | None, Header(alias="Authorization")] = None
+):
     if authorization is None:
         raise HTTPException(status_code=401, detail="Authorization header missing")
 
