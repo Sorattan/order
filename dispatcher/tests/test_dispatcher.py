@@ -1,7 +1,7 @@
+import httpx
 from fastapi.testclient import TestClient
 from unittest.mock import patch, Mock
 from app.main import app
-import httpx
 
 client = TestClient(app)
 
@@ -17,7 +17,7 @@ def test_unknown_route_should_return_404():
     assert response.status_code == 404
 
 
-def test_protected_route_without_token_should_return_401():
+def test_products_without_token_should_return_401():
     response = client.get("/products")
     assert response.status_code == 401
     assert response.json()["detail"] == "Authorization header missing"
@@ -60,6 +60,7 @@ def test_auth_login_should_return_401_when_auth_service_rejects(mock_post):
     assert response.status_code == 401
     assert response.json()["detail"] == "Invalid username or password"
 
+
 @patch("app.main.httpx.post")
 def test_auth_login_should_return_503_when_auth_service_is_unavailable(mock_post):
     mock_post.side_effect = httpx.RequestError("Service unavailable")
@@ -71,3 +72,34 @@ def test_auth_login_should_return_503_when_auth_service_is_unavailable(mock_post
 
     assert response.status_code == 503
     assert response.json()["detail"] == "Auth service unavailable"
+
+
+@patch("app.main.httpx.get")
+def test_products_should_forward_request_when_token_exists(mock_get):
+    mock_response = Mock()
+    mock_response.status_code = 200
+    mock_response.json.return_value = [
+        {"id": 1, "name": "Laptop", "price": 25000.0}
+    ]
+    mock_get.return_value = mock_response
+
+    response = client.get(
+        "/products",
+        headers={"Authorization": "Bearer fake-jwt-token"}
+    )
+
+    assert response.status_code == 200
+    assert response.json()[0]["name"] == "Laptop"
+
+
+@patch("app.main.httpx.get")
+def test_products_should_return_503_when_product_service_is_unavailable(mock_get):
+    mock_get.side_effect = httpx.RequestError("Service unavailable")
+
+    response = client.get(
+        "/products",
+        headers={"Authorization": "Bearer fake-jwt-token"}
+    )
+
+    assert response.status_code == 503
+    assert response.json()["detail"] == "Product service unavailable"
