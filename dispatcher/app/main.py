@@ -1,13 +1,16 @@
 import os
 import httpx
-from fastapi import FastAPI, Header, HTTPException
+from fastapi import FastAPI, HTTPException, Depends
 from fastapi.responses import JSONResponse
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel
 
 app = FastAPI()
 
 AUTH_SERVICE_URL = os.getenv("AUTH_SERVICE_URL", "http://127.0.0.1:8001")
 PRODUCT_SERVICE_URL = os.getenv("PRODUCT_SERVICE_URL", "http://127.0.0.1:8002")
+
+security = HTTPBearer(auto_error=False)
 
 class LoginRequest(BaseModel):
     username: str
@@ -17,14 +20,13 @@ class ProductCreateRequest(BaseModel):
     name: str
     price: float
 
-def get_role_from_authorization(authorization: str | None) -> str:
-    if authorization is None:
+def get_role_from_credentials(
+    credentials: HTTPAuthorizationCredentials | None,
+) -> str:
+    if credentials is None:
         raise HTTPException(status_code=401, detail="Authorization header missing")
 
-    if not authorization.startswith("Bearer "):
-        raise HTTPException(status_code=401, detail="Invalid authorization format")
-
-    token = authorization.split(" ", 1)[1].strip()
+    token = credentials.credentials
 
     if token == "admin-token":
         return "admin"
@@ -44,29 +46,31 @@ def auth_login(data: LoginRequest):
         response = httpx.post(
             f"{AUTH_SERVICE_URL}/login",
             json=data.model_dump(),
-            timeout=5.0
+            timeout=5.0,
         )
 
         return JSONResponse(
             status_code=response.status_code,
-            content=response.json()
+            content=response.json(),
         )
     except httpx.RequestError:
         raise HTTPException(status_code=503, detail="Auth service unavailable")
 
 @app.get("/products")
-def get_products(authorization: str | None = Header(default=None)):
-    get_role_from_authorization(authorization)
+def get_products(
+    credentials: HTTPAuthorizationCredentials | None = Depends(security),
+):
+    get_role_from_credentials(credentials)
 
     try:
         response = httpx.get(
             f"{PRODUCT_SERVICE_URL}/products",
-            timeout=5.0
+            timeout=5.0,
         )
 
         return JSONResponse(
             status_code=response.status_code,
-            content=response.json()
+            content=response.json(),
         )
     except httpx.RequestError:
         raise HTTPException(status_code=503, detail="Product service unavailable")
@@ -74,9 +78,9 @@ def get_products(authorization: str | None = Header(default=None)):
 @app.post("/products")
 def create_product(
     data: ProductCreateRequest,
-    authorization: str | None = Header(default=None)
+    credentials: HTTPAuthorizationCredentials | None = Depends(security),
 ):
-    role = get_role_from_authorization(authorization)
+    role = get_role_from_credentials(credentials)
 
     if role != "admin":
         raise HTTPException(status_code=403, detail="Admin role required")
@@ -85,12 +89,12 @@ def create_product(
         response = httpx.post(
             f"{PRODUCT_SERVICE_URL}/products",
             json=data.model_dump(),
-            timeout=5.0
+            timeout=5.0,
         )
 
         return JSONResponse(
             status_code=response.status_code,
-            content=response.json()
+            content=response.json(),
         )
     except httpx.RequestError:
         raise HTTPException(status_code=503, detail="Product service unavailable")
