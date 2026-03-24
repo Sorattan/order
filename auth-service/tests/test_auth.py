@@ -10,14 +10,26 @@ def test_health_should_return_200():
     assert response.json() == {"status": "ok"}
 
 
-def test_login_should_return_token_for_valid_credentials():
+def test_admin_login_should_return_admin_token():
     response = client.post("/login", json={
         "username": "admin",
         "password": "1234"
     })
 
     assert response.status_code == 200
-    assert response.json()["access_token"] == "fake-jwt-token"
+    assert response.json()["access_token"] == "admin-token"
+    assert response.json()["role"] == "admin"
+
+
+def test_user_login_should_return_user_token():
+    response = client.post("/login", json={
+        "username": "user",
+        "password": "1234"
+    })
+
+    assert response.status_code == 200
+    assert response.json()["access_token"] == "user-token"
+    assert response.json()["role"] == "user"
 
 
 def test_login_should_return_401_for_invalid_credentials():

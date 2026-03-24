@@ -18,8 +18,16 @@ def health():
 def login(data: LoginRequest):
     if data.username == "admin" and data.password == "1234":
         return {
-            "access_token": "fake-jwt-token",
+            "access_token": "admin-token",
             "token_type": "bearer",
             "role": "admin"
         }
+
+    if data.username == "user" and data.password == "1234":
+        return {
+            "access_token": "user-token",
+            "token_type": "bearer",
+            "role": "user"
+        }
+
     raise HTTPException(status_code=401, detail="Invalid username or password")
