@@ -123,3 +123,83 @@ def test_create_product_should_return_503_when_product_service_is_unavailable(mo
 
     assert response.status_code == 503
     assert response.json()["detail"] == "Product service unavailable"
+
+@patch("app.main.httpx.get")
+def test_orders_should_return_only_user_orders_for_user_role(mock_get):
+    mock_response = Mock()
+    mock_response.status_code = 200
+    mock_response.json.return_value = [
+        {"id": 1, "product_id": 1, "quantity": 2, "created_by": "user", "status": "created"},
+        {"id": 2, "product_id": 2, "quantity": 1, "created_by": "admin", "status": "created"},
+    ]
+    mock_get.return_value = mock_response
+
+    response = client.get(
+        "/orders",
+        headers={"Authorization": "Bearer user-token"}
+    )
+
+    assert response.status_code == 200
+    assert len(response.json()) == 1
+    assert response.json()[0]["created_by"] == "user"
+
+@patch("app.main.httpx.get")
+def test_orders_should_return_all_orders_for_admin_role(mock_get):
+    mock_response = Mock()
+    mock_response.status_code = 200
+    mock_response.json.return_value = [
+        {"id": 1, "product_id": 1, "quantity": 2, "created_by": "user", "status": "created"},
+        {"id": 2, "product_id": 2, "quantity": 1, "created_by": "admin", "status": "created"},
+    ]
+    mock_get.return_value = mock_response
+
+    response = client.get(
+        "/orders",
+        headers={"Authorization": "Bearer admin-token"}
+    )
+
+    assert response.status_code == 200
+    assert len(response.json()) == 2
+
+@patch("app.main.httpx.post")
+def test_create_order_should_forward_request_for_user(mock_post):
+    mock_response = Mock()
+    mock_response.status_code = 201
+    mock_response.json.return_value = {
+        "id": 2,
+        "product_id": 1,
+        "quantity": 4,
+        "created_by": "user",
+        "status": "created",
+    }
+    mock_post.return_value = mock_response
+
+    response = client.post(
+        "/orders",
+        headers={"Authorization": "Bearer user-token"},
+        json={"product_id": 1, "quantity": 4}
+    )
+
+    assert response.status_code == 201
+    assert response.json()["created_by"] == "user"
+
+@patch("app.main.httpx.get")
+def test_get_order_should_return_403_for_other_users_order(mock_get):
+    mock_response = Mock()
+    mock_response.status_code = 200
+    mock_response.json.return_value = {
+        "id": 2,
+        "product_id": 1,
+        "quantity": 1,
+        "created_by": "admin",
+        "status": "created",
+    }
+    mock_get.return_value = mock_response
+
+    response = client.get(
+        "/orders/2",
+        headers={"Authorization": "Bearer user-token"}
+    )
+
+    assert response.status_code == 403
+    assert response.json()["detail"] == "Not allowed to access this order"
