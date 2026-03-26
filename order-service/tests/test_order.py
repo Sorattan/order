@@ -12,14 +12,18 @@ def test_get_orders_should_return_200():
     response = client.get("/orders")
     assert response.status_code == 200
     assert isinstance(response.json(), list)
+    assert len(response.json()) >= 1
 
 def test_get_existing_order_should_return_200():
-    response = client.get("/orders/1")
+    orders_response = client.get("/orders")
+    order_id = orders_response.json()[0]["id"]
+
+    response = client.get(f"/orders/{order_id}")
     assert response.status_code == 200
-    assert response.json()["id"] == 1
+    assert response.json()["id"] == order_id
 
 def test_get_non_existing_order_should_return_404():
-    response = client.get("/orders/999")
+    response = client.get("/orders/000000000000000000000000")
     assert response.status_code == 404
     assert response.json()["detail"] == "Order not found"
 

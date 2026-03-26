@@ -137,7 +137,7 @@ def get_orders(
 
 @app.get("/orders/{order_id}")
 def get_order(
-    order_id: int,
+    order_id: str,
     credentials: HTTPAuthorizationCredentials | None = Depends(security),
 ):
     role, user_name = get_role_and_user_from_credentials(credentials)
