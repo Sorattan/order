@@ -3,12 +3,10 @@ from app.main import app
 
 client = TestClient(app)
 
-
 def test_health_should_return_200():
     response = client.get("/health")
     assert response.status_code == 200
     assert response.json() == {"status": "ok"}
-
 
 def test_admin_login_should_return_admin_token():
     response = client.post("/login", json={
@@ -20,7 +18,6 @@ def test_admin_login_should_return_admin_token():
     assert response.json()["access_token"] == "admin-token"
     assert response.json()["role"] == "admin"
 
-
 def test_user_login_should_return_user_token():
     response = client.post("/login", json={
         "username": "user",
@@ -30,7 +27,6 @@ def test_user_login_should_return_user_token():
     assert response.status_code == 200
     assert response.json()["access_token"] == "user-token"
     assert response.json()["role"] == "user"
-
 
 def test_login_should_return_401_for_invalid_credentials():
     response = client.post("/login", json={
