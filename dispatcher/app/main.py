@@ -1,11 +1,20 @@
 import os
+import json
+import time
 import httpx
-from fastapi import FastAPI, HTTPException, Depends
-from fastapi.responses import JSONResponse
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from pathlib import Path
 from pydantic import BaseModel
+from datetime import datetime, timezone
+from fastapi.responses import JSONResponse
+from prometheus_fastapi_instrumentator import Instrumentator
+from fastapi import FastAPI, HTTPException, Depends, Request
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 
 app = FastAPI()
+
+LOG_DIR = Path("/logs")
+LOG_DIR.mkdir(parents=True, exist_ok=True)
+LOG_FILE = LOG_DIR / "dispatcher.log"
 
 AUTH_SERVICE_URL = os.getenv("AUTH_SERVICE_URL", "http://127.0.0.1:8001")
 PRODUCT_SERVICE_URL = os.getenv("PRODUCT_SERVICE_URL", "http://127.0.0.1:8002")
@@ -40,6 +49,43 @@ def get_role_and_user_from_credentials(
         return "user", "user"
 
     raise HTTPException(status_code=401, detail="Invalid token")
+
+@app.middleware("http")
+async def log_requests(request: Request, call_next):
+    start_time = time.perf_counter()
+
+    try:
+        response = await call_next(request)
+        duration_ms = round((time.perf_counter() - start_time) * 1000, 2)
+
+        write_dispatcher_log({
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "service": "dispatcher",
+            "method": request.method,
+            "path": request.url.path,
+            "query": str(request.url.query),
+            "status_code": response.status_code,
+            "duration_ms": duration_ms,
+            "client_host": request.client.host if request.client else None,
+        })
+
+        return response
+
+    except Exception as exc:
+        duration_ms = round((time.perf_counter() - start_time) * 1000, 2)
+
+        write_dispatcher_log({
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "service": "dispatcher",
+            "method": request.method,
+            "path": request.url.path,
+            "query": str(request.url.query),
+            "status_code": 500,
+            "duration_ms": duration_ms,
+            "client_host": request.client.host if request.client else None,
+            "error": str(exc),
+        })
+        raise
 
 @app.get("/health")
 def health():
@@ -137,7 +183,7 @@ def get_orders(
 
 @app.get("/orders/{order_id}")
 def get_order(
-    order_id: int,
+    order_id: str,
     credentials: HTTPAuthorizationCredentials | None = Depends(security),
 ):
     role, user_name = get_role_and_user_from_credentials(credentials)
@@ -192,3 +238,9 @@ def create_order(
         )
     except httpx.RequestError:
         raise HTTPException(status_code=503, detail="Order service unavailable")
+    
+def write_dispatcher_log(record: dict) -> None:
+    with LOG_FILE.open("a", encoding="utf-8") as f:
+        f.write(json.dumps(record, ensure_ascii=False) + "\n")
+
+Instrumentator().instrument(app).expose(app, endpoint="/metrics", include_in_schema=False)

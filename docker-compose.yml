@@ -1,33 +1,30 @@
-version: "3.9"
-
 services:
   dispatcher:
     build: ./dispatcher
     container_name: dispatcher
     ports:
       - "8000:8000"
+    volumes:
+      - ./logs/dispatcher:/logs
     depends_on:
       - auth-service
       - product-service
       - order-service
-      - dispatcher-db
     environment:
-      - APP_NAME=dispatcher
       - AUTH_SERVICE_URL=http://auth-service:8001
       - PRODUCT_SERVICE_URL=http://product-service:8002
       - ORDER_SERVICE_URL=http://order-service:8003
-      - MONGO_URL=mongodb://dispatcher-db:27017
-      - DB_NAME=dispatcher_db
     networks:
       - backend
 
   auth-service:
     build: ./auth-service
     container_name: auth-service
+    ports:
+      - "8001:8001"
     depends_on:
       - auth-db
     environment:
-      - APP_NAME=auth-service
       - MONGO_URL=mongodb://auth-db:27017
       - DB_NAME=auth_db
     networks:
@@ -36,10 +33,11 @@ services:
   product-service:
     build: ./product-service
     container_name: product-service
+    ports:
+      - "8002:8002"
     depends_on:
       - product-db
     environment:
-      - APP_NAME=product-service
       - MONGO_URL=mongodb://product-db:27017
       - DB_NAME=product_db
     networks:
@@ -48,21 +46,64 @@ services:
   order-service:
     build: ./order-service
     container_name: order-service
+    ports:
+      - "8003:8003"
     depends_on:
       - order-db
     environment:
-      - APP_NAME=order-service
       - MONGO_URL=mongodb://order-db:27017
       - DB_NAME=order_db
     networks:
       - backend
-
-  dispatcher-db:
-    image: mongo:7
-    container_name: dispatcher-db
+  prometheus:
+    image: prom/prometheus
+    container_name: prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./infra/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
     networks:
       - backend
 
+  loki:
+    image: grafana/loki:2.9.8
+    container_name: loki
+    ports:
+      - "3100:3100"
+    command: -config.file=/etc/loki/local-config.yaml
+    volumes:
+      - ./infra/loki/loki-config.yml:/etc/loki/local-config.yaml
+    networks:
+      - backend
+
+  promtail:
+    image: grafana/promtail:2.9.8
+    container_name: promtail
+    command: -config.file=/etc/promtail/config.yml
+    volumes:
+      - ./infra/promtail/promtail-config.yml:/etc/promtail/config.yml
+      - ./logs/dispatcher:/var/log/dispatcher
+    depends_on:
+      - loki
+    networks:
+      - backend
+
+  grafana:
+    image: grafana/grafana-oss
+    container_name: grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    volumes:
+      - ./infra/grafana/provisioning:/etc/grafana/provisioning
+    depends_on:
+      - prometheus
+      - loki
+    networks:
+      - backend
+  
   auth-db:
     image: mongo:7
     container_name: auth-db
