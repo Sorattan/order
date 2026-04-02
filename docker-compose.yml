@@ -103,7 +103,22 @@ services:
       - loki
     networks:
       - backend
-  
+
+  k6:
+    image: grafana/k6
+    container_name: k6
+    volumes:
+      - ./load-tests/k6:/scripts
+    environment:
+      - BASE_URL=http://dispatcher:8000
+    command: run /scripts/load-test.js
+    depends_on:
+      - dispatcher
+    networks:
+      - backend
+    profiles:
+      - loadtest
+
   auth-db:
     image: mongo:7
     container_name: auth-db
