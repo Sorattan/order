@@ -256,7 +256,7 @@ Projede API tasarımı REST prensiplerine ve Richardson Maturity Model Seviye 2 
 
 ---
 
-## Veritabanı İzolasyonu
+## Veritabanı Izolasyonu
 
 Her mikroservis kendi veritabanını kullanmaktadır:
 
