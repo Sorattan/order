@@ -1,5 +1,5 @@
 import os
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Response
 from pydantic import BaseModel
 from pymongo import MongoClient
 from bson import ObjectId
@@ -14,6 +14,10 @@ db = client[DB_NAME]
 products_collection = db["products"]
 
 class ProductCreateRequest(BaseModel):
+    name: str
+    price: float
+
+class ProductUpdateRequest(BaseModel):
     name: str
     price: float
 
@@ -53,7 +57,6 @@ def get_product(product_id: str):
 
     return serialize_product(product)
 
-
 @app.post("/products", status_code=201)
 def create_product(data: ProductCreateRequest):
     result = products_collection.insert_one({
@@ -63,3 +66,35 @@ def create_product(data: ProductCreateRequest):
 
     product = products_collection.find_one({"_id": result.inserted_id})
     return serialize_product(product)
+
+@app.put("/products/{product_id}")
+def update_product(product_id: str, data: ProductUpdateRequest):
+    try:
+        oid = ObjectId(product_id)
+    except Exception:
+        raise HTTPException(status_code=404, detail="Product not found")
+
+    result = products_collection.update_one(
+        {"_id": oid},
+        {"$set": {"name": data.name, "price": data.price}},
+    )
+
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Product not found")
+
+    product = products_collection.find_one({"_id": oid})
+    return serialize_product(product)
+
+@app.delete("/products/{product_id}", status_code=204)
+def delete_product(product_id: str):
+    try:
+        oid = ObjectId(product_id)
+    except Exception:
+        raise HTTPException(status_code=404, detail="Product not found")
+
+    result = products_collection.delete_one({"_id": oid})
+
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Product not found")
+
+    return Response(status_code=204)

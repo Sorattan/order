@@ -7,8 +7,8 @@ from pydantic import BaseModel
 from datetime import datetime, timezone
 from fastapi.responses import JSONResponse
 from prometheus_fastapi_instrumentator import Instrumentator
-from fastapi import FastAPI, HTTPException, Depends, Request
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from fastapi import FastAPI, HTTPException, Depends, Request, Response
 
 app = FastAPI()
 
@@ -27,6 +27,10 @@ class LoginRequest(BaseModel):
     password: str
 
 class ProductCreateRequest(BaseModel):
+    name: str
+    price: float
+
+class ProductUpdateRequest(BaseModel):
     name: str
     price: float
 
@@ -142,6 +146,57 @@ def create_product(
             json=data.model_dump(),
             timeout=5.0,
         )
+
+        return JSONResponse(
+            status_code=response.status_code,
+            content=response.json(),
+        )
+    except httpx.RequestError:
+        raise HTTPException(status_code=503, detail="Product service unavailable")
+
+@app.put("/products/{product_id}")
+def update_product(
+    product_id: str,
+    data: ProductUpdateRequest,
+    credentials: HTTPAuthorizationCredentials | None = Depends(security),
+):
+    role, _ = get_role_and_user_from_credentials(credentials)
+
+    if role != "admin":
+        raise HTTPException(status_code=403, detail="Admin role required")
+
+    try:
+        response = httpx.put(
+            f"{PRODUCT_SERVICE_URL}/products/{product_id}",
+            json=data.model_dump(),
+            timeout=5.0,
+        )
+
+        return JSONResponse(
+            status_code=response.status_code,
+            content=response.json(),
+        )
+    except httpx.RequestError:
+        raise HTTPException(status_code=503, detail="Product service unavailable")
+
+@app.delete("/products/{product_id}")
+def delete_product(
+    product_id: str,
+    credentials: HTTPAuthorizationCredentials | None = Depends(security),
+):
+    role, _ = get_role_and_user_from_credentials(credentials)
+
+    if role != "admin":
+        raise HTTPException(status_code=403, detail="Admin role required")
+
+    try:
+        response = httpx.delete(
+            f"{PRODUCT_SERVICE_URL}/products/{product_id}",
+            timeout=5.0,
+        )
+
+        if response.status_code == 204:
+            return Response(status_code=204)
 
         return JSONResponse(
             status_code=response.status_code,
