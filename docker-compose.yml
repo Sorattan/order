@@ -122,21 +122,32 @@ services:
   auth-db:
     image: mongo:7
     container_name: auth-db
+    volumes:
+      - auth-db-data:/data/db
     networks:
       - backend
 
   product-db:
     image: mongo:7
     container_name: product-db
+    volumes:
+      - product-db-data:/data/db
     networks:
       - backend
 
   order-db:
     image: mongo:7
     container_name: order-db
+    volumes:
+      - order-db-data:/data/db
     networks:
       - backend
 
 networks:
   backend:
     driver: bridge
+
+volumes:
+  auth-db-data:
+  product-db-data:
+  order-db-data:
