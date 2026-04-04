@@ -7,8 +7,8 @@ from pydantic import BaseModel
 from datetime import datetime, timezone
 from fastapi.responses import JSONResponse
 from prometheus_fastapi_instrumentator import Instrumentator
-from fastapi import FastAPI, HTTPException, Depends, Request
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from fastapi import FastAPI, HTTPException, Depends, Request, Response
 
 app = FastAPI()
 
@@ -30,9 +30,16 @@ class ProductCreateRequest(BaseModel):
     name: str
     price: float
 
+class ProductUpdateRequest(BaseModel):
+    name: str
+    price: float
+
 class OrderCreateRequest(BaseModel):
     product_id: int
     quantity: int
+
+class OrderStatusUpdateRequest(BaseModel):
+    status: str 
 
 def get_role_and_user_from_credentials(
     credentials: HTTPAuthorizationCredentials | None,
@@ -150,6 +157,57 @@ def create_product(
     except httpx.RequestError:
         raise HTTPException(status_code=503, detail="Product service unavailable")
 
+@app.put("/products/{product_id}")
+def update_product(
+    product_id: str,
+    data: ProductUpdateRequest,
+    credentials: HTTPAuthorizationCredentials | None = Depends(security),
+):
+    role, _ = get_role_and_user_from_credentials(credentials)
+
+    if role != "admin":
+        raise HTTPException(status_code=403, detail="Admin role required")
+
+    try:
+        response = httpx.put(
+            f"{PRODUCT_SERVICE_URL}/products/{product_id}",
+            json=data.model_dump(),
+            timeout=5.0,
+        )
+
+        return JSONResponse(
+            status_code=response.status_code,
+            content=response.json(),
+        )
+    except httpx.RequestError:
+        raise HTTPException(status_code=503, detail="Product service unavailable")
+
+@app.delete("/products/{product_id}")
+def delete_product(
+    product_id: str,
+    credentials: HTTPAuthorizationCredentials | None = Depends(security),
+):
+    role, _ = get_role_and_user_from_credentials(credentials)
+
+    if role != "admin":
+        raise HTTPException(status_code=403, detail="Admin role required")
+
+    try:
+        response = httpx.delete(
+            f"{PRODUCT_SERVICE_URL}/products/{product_id}",
+            timeout=5.0,
+        )
+
+        if response.status_code == 204:
+            return Response(status_code=204)
+
+        return JSONResponse(
+            status_code=response.status_code,
+            content=response.json(),
+        )
+    except httpx.RequestError:
+        raise HTTPException(status_code=503, detail="Product service unavailable")
+
 @app.get("/orders")
 def get_orders(
     credentials: HTTPAuthorizationCredentials | None = Depends(security),
@@ -238,7 +296,58 @@ def create_order(
         )
     except httpx.RequestError:
         raise HTTPException(status_code=503, detail="Order service unavailable")
-    
+
+@app.patch("/orders/{order_id}/status")
+def update_order_status(
+    order_id: str,
+    data: OrderStatusUpdateRequest,
+    credentials: HTTPAuthorizationCredentials | None = Depends(security),
+):
+    role, _ = get_role_and_user_from_credentials(credentials)
+
+    if role != "admin":
+        raise HTTPException(status_code=403, detail="Admin role required")
+
+    try:
+        response = httpx.patch(
+            f"{ORDER_SERVICE_URL}/orders/{order_id}/status",
+            json=data.model_dump(),
+            timeout=5.0,
+        )
+
+        return JSONResponse(
+            status_code=response.status_code,
+            content=response.json(),
+        )
+    except httpx.RequestError:
+        raise HTTPException(status_code=503, detail="Order service unavailable")
+
+@app.delete("/orders/{order_id}")
+def delete_order(
+    order_id: str,
+    credentials: HTTPAuthorizationCredentials | None = Depends(security),
+):
+    role, _ = get_role_and_user_from_credentials(credentials)
+
+    if role != "admin":
+        raise HTTPException(status_code=403, detail="Admin role required")
+
+    try:
+        response = httpx.delete(
+            f"{ORDER_SERVICE_URL}/orders/{order_id}",
+            timeout=5.0,
+        )
+
+        if response.status_code == 204:
+            return Response(status_code=204)
+
+        return JSONResponse(
+            status_code=response.status_code,
+            content=response.json(),
+        )
+    except httpx.RequestError:
+        raise HTTPException(status_code=503, detail="Order service unavailable")
+
 def write_dispatcher_log(record: dict) -> None:
     with LOG_FILE.open("a", encoding="utf-8") as f:
         f.write(json.dumps(record, ensure_ascii=False) + "\n")
