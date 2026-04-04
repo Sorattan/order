@@ -332,3 +332,28 @@ Yük testleri `k6` ile gerçekleştirilmiştir. Test senaryolarında aşağıdak
 Bu sonuçlar sistemin belirlenen yük altında kararlı şekilde çalışabildiğini göstermektedir.
 
 ---
+
+## Ekran Görüntüleri
+
+### Prometheus Targets
+<img width="2539" height="901" alt="Prometheus Targets" src="https://github.com/user-attachments/assets/92329d88-d610-4a1b-8ea2-ab77426d10f6" />
+Prometheus "Target Health" paneli üzerinden Dispatcher servisinin sağlık durumunun (Health Check) izlenmesi. http://dispatcher:8000/metrics uç noktasının aktif olarak taranması ve servisin "UP" (çalışır durumda) olduğu doğrulanmaktadır.
+
+### Grafana Metrics Dashboard (50 ve 100 Sanal Kullanıcı)
+<img width="1782" height="823" alt="Grafana Metrics Dashboard 50" src="https://github.com/user-attachments/assets/0bb6e115-1109-49f9-b528-848049a83915" />
+<img width="1785" height="871" alt="Grafana Metrics Dashboard 100" src="https://github.com/user-attachments/assets/e1343cf1-8139-4aed-9e80-edd5f001941c" />
+k6 yük testi sırasında sistemin performans metriklerinin gerçek zamanlı görselleştirilmesi. Grafik üzerinde eş zamanlı isteklerin (http_requests_total) ve sistem kaynak kullanımının (memory_bytes) zaman içindeki değişimi ile yük altındaki sistem davranışı analiz edilmektedir.
+
+### Loki Logs
+<img width="2148" height="1300" alt="Loki Logs" src="https://github.com/user-attachments/assets/888f30c1-625b-42e1-b2b1-18cbf58bb677" />
+Dispatcher üzerinden geçen tüm trafiğin Grafana Loki üzerinde merkezi olarak loglanması. Görselde, gelen isteklerin HTTP metodları (GET/POST), yönlendirilen yollar (/products, /metrics) ve yanıt sürelerinin (duration_ms) JSON formatında detaylı takibi görülmektedir.
+
+### k6 Load Test
+<img width="1310" height="957" alt="k6 Load Test Terminal" src="https://github.com/user-attachments/assets/a55ce6a8-a8db-4b5f-af8d-5193a2dab384" />
+100 eş zamanlı sanal kullanıcı ile gerçekleştirilen, 4 kademeli ve 3 dakika 30 saniyelik yük testi terminal çıktısı. Toplam 8778 isteği %100 başarı oranı (0.00% failure) ile karşılamış ve belirlenen performans eşiklerini (p(95) < 1000ms) başarıyla geçmiştir.
+
+---
+
+## Sonuç
+
+Bu projede mikroservis mimarisi kullanılarak modüler, genişletilebilir ve izlenebilir bir sipariş sistemi geliştirilmiştir. Her servisin kendi sorumluluk alanına ve kendi veritabanına sahip olması sayesinde servis izolasyonu sağlanmıştır. Dispatcher katmanı sayesinde istemci ile servisler arasındaki iletişim merkezi hale getirilmiştir.
