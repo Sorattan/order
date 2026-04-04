@@ -203,3 +203,113 @@ def test_get_order_should_return_403_for_other_users_order(mock_get):
 
     assert response.status_code == 403
     assert response.json()["detail"] == "Not allowed to access this order"
+
+@patch("app.main.httpx.put")
+def test_update_product_should_return_403_for_user_role(mock_put):
+    response = client.put(
+        "/products/abc123",
+        headers={"Authorization": "Bearer user-token"},
+        json={"name": "Updated", "price": 1500.0}
+    )
+
+    assert response.status_code == 403
+    assert response.json()["detail"] == "Admin role required"
+
+@patch("app.main.httpx.put")
+def test_update_product_should_forward_request_for_admin_role(mock_put):
+    mock_response = Mock()
+    mock_response.status_code = 200
+    mock_response.json.return_value = {
+        "id": "abc123",
+        "name": "Updated Keyboard",
+        "price": 1500.0
+    }
+    mock_put.return_value = mock_response
+
+    response = client.put(
+        "/products/abc123",
+        headers={"Authorization": "Bearer admin-token"},
+        json={"name": "Updated Keyboard", "price": 1500.0}
+    )
+
+    assert response.status_code == 200
+    assert response.json()["name"] == "Updated Keyboard"
+
+@patch("app.main.httpx.delete")
+def test_delete_product_should_return_403_for_user_role(mock_delete):
+    response = client.delete(
+        "/products/abc123",
+        headers={"Authorization": "Bearer user-token"}
+    )
+
+    assert response.status_code == 403
+    assert response.json()["detail"] == "Admin role required"
+
+@patch("app.main.httpx.delete")
+def test_delete_product_should_forward_request_for_admin_role(mock_delete):
+    mock_response = Mock()
+    mock_response.status_code = 204
+    mock_delete.return_value = mock_response
+
+    response = client.delete(
+        "/products/abc123",
+        headers={"Authorization": "Bearer admin-token"}
+    )
+
+    assert response.status_code == 204
+
+@patch("app.main.httpx.patch")
+def test_update_order_status_should_return_403_for_user_role(mock_patch):
+    response = client.patch(
+        "/orders/abc123/status",
+        headers={"Authorization": "Bearer user-token"},
+        json={"status": "shipped"}
+    )
+
+    assert response.status_code == 403
+    assert response.json()["detail"] == "Admin role required"
+
+@patch("app.main.httpx.patch")
+def test_update_order_status_should_forward_request_for_admin_role(mock_patch):
+    mock_response = Mock()
+    mock_response.status_code = 200
+    mock_response.json.return_value = {
+        "id": "abc123",
+        "product_id": 1,
+        "quantity": 2,
+        "created_by": "user",
+        "status": "shipped"
+    }
+    mock_patch.return_value = mock_response
+
+    response = client.patch(
+        "/orders/abc123/status",
+        headers={"Authorization": "Bearer admin-token"},
+        json={"status": "shipped"}
+    )
+
+    assert response.status_code == 200
+    assert response.json()["status"] == "shipped"
+
+@patch("app.main.httpx.delete")
+def test_delete_order_should_return_403_for_user_role(mock_delete):
+    response = client.delete(
+        "/orders/abc123",
+        headers={"Authorization": "Bearer user-token"}
+    )
+
+    assert response.status_code == 403
+    assert response.json()["detail"] == "Admin role required"
+
+@patch("app.main.httpx.delete")
+def test_delete_order_should_forward_request_for_admin_role(mock_delete):
+    mock_response = Mock()
+    mock_response.status_code = 204
+    mock_delete.return_value = mock_response
+
+    response = client.delete(
+        "/orders/abc123",
+        headers={"Authorization": "Bearer admin-token"}
+    )
+
+    assert response.status_code == 204

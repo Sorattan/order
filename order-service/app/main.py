@@ -1,5 +1,5 @@
 import os
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Response
 from pydantic import BaseModel
 from pymongo import MongoClient
 from bson import ObjectId
@@ -17,6 +17,9 @@ class OrderCreateRequest(BaseModel):
     product_id: int
     quantity: int
     created_by: str
+
+class OrderStatusUpdateRequest(BaseModel):
+    status: str
 
 def serialize_order(order) -> dict:
     return {
@@ -69,3 +72,36 @@ def create_order(data: OrderCreateRequest):
 
     order = orders_collection.find_one({"_id": result.inserted_id})
     return serialize_order(order)
+
+@app.patch("/orders/{order_id}/status")
+def update_order_status(order_id: str, data: OrderStatusUpdateRequest):
+    try:
+        oid = ObjectId(order_id)
+    except Exception:
+        raise HTTPException(status_code=404, detail="Order not found")
+
+    result = orders_collection.update_one(
+        {"_id": oid},
+        {"$set": {"status": data.status}},
+    )
+
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Order not found")
+
+    order = orders_collection.find_one({"_id": oid})
+    return serialize_order(order)
+
+
+@app.delete("/orders/{order_id}", status_code=204)
+def delete_order(order_id: str):
+    try:
+        oid = ObjectId(order_id)
+    except Exception:
+        raise HTTPException(status_code=404, detail="Order not found")
+
+    result = orders_collection.delete_one({"_id": oid})
+
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Order not found")
+
+    return Response(status_code=204)

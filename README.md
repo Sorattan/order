@@ -82,10 +82,10 @@ Sistemin giriş noktasıdır. İstemciden gelen tüm istekleri alır, ilgili mik
 Kullanıcı giriş işlemlerini yönetir. Kullanıcı bilgileri kendi MongoDB veritabanında tutulur. Başarılı giriş sonrasında kullanıcıya token ve rol bilgisi döndürür.
 
 ### 3. Product Service
-Ürün listeleme ve ürün ekleme işlemlerini yönetir. Ürünler kendi MongoDB veritabanında tutulur.
+Ürün listeleme, ürün ekleme, ürün güncelleme ve ürün silme işlemlerini yönetir. Ürünler kendi MongoDB veritabanında tutulur.
 
 ### 4. Order Service
-Sipariş oluşturma ve sipariş görüntüleme işlemlerini yönetir. Siparişler kendi MongoDB veritabanında tutulur.
+Sipariş oluşturma, sipariş görüntüleme, sipariş durumu güncelleme ve sipariş silme işlemlerini yönetir. Siparişler kendi MongoDB veritabanında tutulur.
 
 ---
 
@@ -239,12 +239,17 @@ Projede API tasarımı REST prensiplerine ve Richardson Maturity Model Seviye 2 
 
 ### Products
 - `GET /products`
+- `GET /products/{product_id}`
 - `POST /products`
+- `PUT /products/{product_id}`
+- `DELETE /products/{product_id}`
 
 ### Orders
 - `GET /orders`
 - `GET /orders/{order_id}`
 - `POST /orders`
+- `PATCH /orders/{order_id}/status`
+- `DELETE /orders/{order_id}`
 
 ### Kullanılan HTTP durum kodları
 - `200 OK`
