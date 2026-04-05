@@ -26,7 +26,7 @@ Bu proje, mikroservis mimarisi kullanılarak geliştirilen bir sipariş yönetim
 
 ## Proje Özeti
 
-Bu sistemde kullanıcılar giriş yapabilir, ürünleri listeleyebilir ve sipariş oluşturabilir. Yönetici rolüne sahip kullanıcılar ise buna ek olarak ürün ekleyebilir. Tüm istemci istekleri doğrudan alt servislere değil, `dispatcher` servisine gönderilir. `dispatcher`, sistemi dış dünyaya açan tek giriş noktası olarak çalışır ve gelen istekleri ilgili mikroservislere yönlendirir.
+Bu sistemde kullanıcılar giriş yapabilir, ürünleri listeleyebilir ve sipariş oluşturabilir. Yönetici rolüne sahip kullanıcılar ise buna ek olarak ürün ekleyebilir, ürünleri ve siparişleri düzenleyebilir ve silebilir. Tüm istemci istekleri doğrudan alt servislere değil, `dispatcher` servisine gönderilir. `dispatcher`, sistemi dış dünyaya açan tek giriş noktası olarak çalışır ve gelen istekleri ilgili mikroservislere yönlendirir.
 
 Projede geliştirilen bileşenler:
 
@@ -193,9 +193,8 @@ sequenceDiagram
 │   ├── prometheus/         # Metrik toplama
 │   └── promtail/           # Log iletimi
 ├── load-tests/             # Performans ve yük testleri
-│   ├── screenshots/        # Test sonuç ekran görüntüleri
-│   ├── k6/                 # k6 test scriptleri
-│   └── results/            # JSON/HTML sonuç çıktıları
+│   └── k6/                 # k6 test scriptleri
+│       └── results/        # JSON/HTML sonuç çıktıları
 ├── logs/                   # Test logları
 ├── docker-compose.yml      # Tüm sistemi ayağa kaldıran ana dosya
 └── README.md               # Proje dökümantasyonu
@@ -224,8 +223,12 @@ Sistemde iki temel rol bulunmaktadır:
 ` admin `
 - giriş yapabilir
 - ürünleri listeleyebilir
+- ürün düzenleyebilir
 - ürün ekleyebilir
+- ürün silebilir
+- sipariş düzenleyebilir
 - sipariş oluşturabilir
+- sipariş silebilir
 - tüm siparişleri görebilir
 
 ---
@@ -334,19 +337,12 @@ Yük testleri `k6` ile gerçekleştirilmiştir. Test senaryolarında aşağıdak
 - ortalama istek süresi: `272.39 ms`
 - p95: `969.84 ms`
 
-Bu sonuçlar sistemin belirlenen yük altında kararlı şekilde çalışabildiğini göstermektedir.
-
 ---
 
 ## Ekran Görüntüleri
 
-### Prometheus Targets
-<img width="2539" height="901" alt="Prometheus Targets" src="https://github.com/user-attachments/assets/92329d88-d610-4a1b-8ea2-ab77426d10f6" />
-Prometheus "Target Health" paneli üzerinden Dispatcher servisinin sağlık durumunun (Health Check) izlenmesi. http://dispatcher:8000/metrics uç noktasının aktif olarak taranması ve servisin "UP" (çalışır durumda) olduğu doğrulanmaktadır.
-
-### Grafana Metrics Dashboard (50 ve 100 Sanal Kullanıcı)
-<img width="1782" height="823" alt="Grafana Metrics Dashboard 50" src="https://github.com/user-attachments/assets/0bb6e115-1109-49f9-b528-848049a83915" />
-<img width="1785" height="871" alt="Grafana Metrics Dashboard 100" src="https://github.com/user-attachments/assets/e1343cf1-8139-4aed-9e80-edd5f001941c" />
+### Grafana Metrics Dashboard (100 Sanal Kullanıcı)
+<img width="2159" height="987" alt="Grafana Dashboard" src="https://github.com/user-attachments/assets/643b7fa6-4b25-4ea7-8dc1-08dffc599e99" />
 k6 yük testi sırasında sistemin performans metriklerinin gerçek zamanlı görselleştirilmesi. Grafik üzerinde eş zamanlı isteklerin (http_requests_total) ve sistem kaynak kullanımının (memory_bytes) zaman içindeki değişimi ile yük altındaki sistem davranışı analiz edilmektedir.
 
 ### Loki Logs
@@ -354,8 +350,12 @@ k6 yük testi sırasında sistemin performans metriklerinin gerçek zamanlı gö
 Dispatcher üzerinden geçen tüm trafiğin Grafana Loki üzerinde merkezi olarak loglanması. Görselde, gelen isteklerin HTTP metodları (GET/POST), yönlendirilen yollar (/products, /metrics) ve yanıt sürelerinin (duration_ms) JSON formatında detaylı takibi görülmektedir.
 
 ### k6 Load Test
-<img width="1310" height="957" alt="k6 Load Test Terminal" src="https://github.com/user-attachments/assets/a55ce6a8-a8db-4b5f-af8d-5193a2dab384" />
-100 eş zamanlı sanal kullanıcı ile gerçekleştirilen, 4 kademeli ve 3 dakika 30 saniyelik yük testi terminal çıktısı. Toplam 8778 isteği %100 başarı oranı (0.00% failure) ile karşılamış ve belirlenen performans eşiklerini (p(95) < 1000ms) başarıyla geçmiştir.
+<img width="1072" height="736" alt="k6 Load Test" src="https://github.com/user-attachments/assets/9ad8e7c5-ad64-4337-b0d2-9210a8ba9b0e" />
+100 eş zamanlı sanal kullanıcı ile gerçekleştirilen, 5 kademeli ve 4 dakika yük testi terminal çıktısı. Toplam 11855 isteği %100 başarı oranı (0.00% failure) ile karşılamış ve belirlenen performans eşiklerini (p(95) < 1000ms) başarıyla geçmiştir.
+
+### Prometheus Targets
+<img width="2539" height="901" alt="Prometheus Targets" src="https://github.com/user-attachments/assets/92329d88-d610-4a1b-8ea2-ab77426d10f6" />
+Prometheus "Target Health" paneli üzerinden Dispatcher servisinin sağlık durumunun (Health Check) izlenmesi. http://dispatcher:8000/metrics uç noktasının aktif olarak taranması ve servisin "UP" (çalışır durumda) olduğu doğrulanmaktadır.
 
 ---
 
